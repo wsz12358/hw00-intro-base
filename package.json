@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "start": "webpack-dev-server --no-hot --live-reload",
-    "build": "webpack"
+    "start": "set NODE_OPTIONS=--openssl-legacy-provider && webpack-dev-server --no-hot --live-reload",
+    "build": "set NODE_OPTIONS=--openssl-legacy-provider && webpack"
   },
   "devDependencies": {
     "@types/dat.gui": "^0.7.7",
