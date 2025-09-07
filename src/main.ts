@@ -1,8 +1,9 @@
-import {vec3} from 'gl-matrix';
+import {vec3, vec4} from 'gl-matrix';
 const Stats = require('stats-js');
 import * as DAT from 'dat.gui';
 import Icosphere from './geometry/Icosphere';
 import Square from './geometry/Square';
+import Cube from './geometry/Cube';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
@@ -12,18 +13,22 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
   tesselations: 5,
+  u_Color: [255, 0, 0], // RGB color values (0-255)
   'Load Scene': loadScene, // A function pointer, essentially
 };
 
 let icosphere: Icosphere;
 let square: Square;
+let cube: Cube;
 let prevTesselations: number = 5;
 
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
   icosphere.create();
-  square = new Square(vec3.fromValues(0, 0, 0));
+  square = new Square(vec3.fromValues(-2, 0, 0)); // 我将为Square设置一个不同的位置
   square.create();
+  cube = new Cube(vec3.fromValues(2, 0, 0));     // 我将为Cube设置一个不同的位置
+  cube.create();
 }
 
 function main() {
@@ -38,6 +43,16 @@ function main() {
   // Add controls to the gui
   const gui = new DAT.GUI();
   gui.add(controls, 'tesselations', 0, 8).step(1);
+  
+  // Add color picker with explicit RGB range validation
+  const colorController = gui.addColor(controls, 'u_Color');
+  colorController.onChange(function(value: number[]) {
+    // Ensure RGB values are clamped to 0-255 range
+    controls.u_Color[0] = Math.max(0, Math.min(255, Math.round(value[0])));
+    controls.u_Color[1] = Math.max(0, Math.min(255, Math.round(value[1])));
+    controls.u_Color[2] = Math.max(0, Math.min(255, Math.round(value[2])));
+  });
+  
   gui.add(controls, 'Load Scene');
 
   // get canvas and webgl context
@@ -60,8 +75,8 @@ function main() {
   gl.enable(gl.DEPTH_TEST);
 
   const lambert = new ShaderProgram([
-    new Shader(gl.VERTEX_SHADER, require('./shaders/lambert-vert.glsl')),
-    new Shader(gl.FRAGMENT_SHADER, require('./shaders/lambert-frag.glsl')),
+    new Shader(gl.VERTEX_SHADER, require('./shaders/perlin-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/perlin-frag.glsl')),
   ]);
 
   // This function will be called every frame
@@ -76,10 +91,21 @@ function main() {
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
+    
+    // Convert RGB values (0-255) from GUI to OpenGL format (0-1)
+    // Clamp values to ensure they're within 0-255 range
+    const color = vec4.fromValues(
+      Math.max(0, Math.min(255, controls.u_Color[0])) / 255.0,
+      Math.max(0, Math.min(255, controls.u_Color[1])) / 255.0, 
+      Math.max(0, Math.min(255, controls.u_Color[2])) / 255.0,
+      1.0
+    );
+    
     renderer.render(camera, lambert, [
-      icosphere,
-      // square,
-    ]);
+      // icosphere,
+      // square, // 我将取消注释Square
+      cube,   // 我将添加Cube到渲染列表
+    ], color);
     stats.end();
 
     // Tell the browser to call `tick` again whenever it renders a new frame
